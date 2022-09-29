@@ -2,10 +2,35 @@ const express = require("express");
 const app = express();
 const port = process.env.PORT || 5000;
 const cors = require("cors");
+const nodemailer = require("nodemailer");
+const nodemailerSendgrid = require("nodemailer-sendgrid");
 var jwt = require("jsonwebtoken");
 require("dotenv").config();
 app.use(cors());
 app.use(express.json());
+
+const transport = nodemailer.createTransport(
+  nodemailerSendgrid({
+    apiKey: process.env.EMAIL_API_KEY,
+  })
+);
+
+const OrderConfirm = (userEmail) => {
+  transport.sendMail({
+    from: process.env.USER_EMAIL,
+    to: userEmail,
+    subject: "Order Mail",
+    html: "<h1>You have placed a order</h1>",
+  });
+};
+const SendMsg = (name, email, subject, msg) => {
+  transport.sendMail({
+    from: email,
+    to: process.env.USER_EMAIL,
+    subject: subject,
+    html: `<p>${msg}</p>`,
+  });
+};
 
 const jwtVerify = (req, res, next) => {
   const authorization = req.headers.authorization;
@@ -64,6 +89,28 @@ async function run() {
 
       res.send(result);
     });
+    app.put("/services/:id", jwtVerify, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const data = req.body;
+      console.log(data);
+      const filter = { _id: ObjectId(id) };
+      const options = { upsert: true };
+      const updateDoc = {
+        $set: {
+          name: data.name,
+          desc: data.desc,
+          minOrderQuanity: data.minOrderQuantity,
+          orderQuanity: data.orderQuanitity,
+          price: data.price,
+        },
+      };
+      const result = await servicesColleciton.updateOne(
+        filter,
+        updateDoc,
+        options
+      );
+      res.send(result);
+    });
     app.get("/orders/:email", jwtVerify, async (req, res) => {
       const email = req.params.email;
       const query = { userEmail: email };
@@ -71,15 +118,85 @@ async function run() {
       const result = await cursor.toArray();
       res.send(result);
     });
+    app.get("/allorders", jwtVerify, verifyAdmin, async (req, res) => {
+      const query = {};
+      const cursor = ordersCollection.find(query);
+      const result = await cursor.toArray();
+      res.send(result);
+    });
     app.delete("/orders/:id", jwtVerify, async (req, res) => {
       const id = req.params.id;
       const query = { _id: ObjectId(id) };
+      const order = await ordersCollection.findOne(query);
+      const productQuantity = order.productQuantity;
+      const productId = order.productId;
+      const serviceProduct = await servicesColleciton.findOne({
+        _id: ObjectId(productId),
+      });
+      const serviceQuanity = serviceProduct.orderQuanity;
+      const totalQuantity = serviceQuanity + parseInt(productQuantity);
+
+      const options = { upsert: true };
+      const filter = {
+        _id: ObjectId(productId),
+      };
+      const updateDoc = {
+        $set: {
+          orderQuanity: totalQuantity,
+        },
+      };
+      const productset = await servicesColleciton.updateOne(
+        filter,
+        updateDoc,
+        options
+      );
       const result = await ordersCollection.deleteOne(query);
       res.send(result);
     });
     app.post("/orders", jwtVerify, async (req, res) => {
       const data = req.body;
+      const email = req.decoded.email;
+      const productId = data.productId;
+      const productQuantity = data.productQuantity;
+      const service = await servicesColleciton.findOne({
+        _id: ObjectId(productId),
+      });
+      const totalQuantity = service.orderQuanity;
+      const restQuantity = totalQuantity - productQuantity;
+      const options = { upsert: true };
+      const filter = {
+        _id: ObjectId(productId),
+      };
+      const updateDoc = {
+        $set: {
+          orderQuanity: restQuantity,
+        },
+      };
+      const productset = await servicesColleciton.updateOne(
+        filter,
+        updateDoc,
+        options
+      );
       const result = await ordersCollection.insertOne(data);
+      OrderConfirm(email);
+      res.send(result);
+    });
+
+    app.put("/orders/:id", async (req, res) => {
+      const id = req.params.id;
+      const data = req.body;
+      const options = { upsert: true };
+      const filter = { _id: ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          status: data.status,
+        },
+      };
+      const result = await ordersCollection.updateOne(
+        filter,
+        updateDoc,
+        options
+      );
       res.send(result);
     });
     // get user all data for one
@@ -166,6 +283,12 @@ async function run() {
       const query = { _id: ObjectId(id) };
       const result = postsCollection.deleteOne(query);
       res.send(result);
+    });
+
+    app.post("/msg", async (req, res) => {
+      const msg = req.body;
+      const result = SendMsg(msg.name, msg.email, msg.subject, msg.msg);
+      res.send({ success: result });
     });
   } finally {
   }
