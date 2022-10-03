@@ -105,6 +105,7 @@ async function run() {
       };
       const updateOrder = await ordersCollection.updateOne(filter, updateDoc);
       const result = await paymentsCollection.insertOne(payment);
+      res.send(result);
     });
     app.get("/services", async (req, res) => {
       const query = {};
