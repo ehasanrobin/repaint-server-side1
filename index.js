@@ -81,7 +81,6 @@ async function run() {
     app.post("/create-payment-intent", async (req, res) => {
       const { totalPrice } = req.body;
       const amount = totalPrice * 100;
-      console.log(amount);
 
       // Create a PaymentIntent with the order amount and currency
       const paymentIntent = await stripe.paymentIntents.create({
@@ -94,7 +93,7 @@ async function run() {
         clientSecret: paymentIntent.client_secret,
       });
     });
-    app.patch("/payments/:id", async (req, res) => {
+    app.patch("/payments/:id", jwtVerify, async (req, res) => {
       const id = req.params.id;
       const payment = req.body;
       const filter = { _id: ObjectId(id) };
