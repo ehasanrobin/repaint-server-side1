@@ -9,9 +9,7 @@ require("dotenv").config();
 app.use(cors());
 app.use(express.json());
 
-const stripe = require("stripe")(
-  "sk_test_51LnhEqIb25AxNl5ozJisKxeGyspchWw7UQC8wPsHE2XUKSWATmjB0KOuNcKIOWUaBysG673bATIa7SXALBsPkT6U00AsiYqO35"
-);
+const stripe = require("stripe")(process.env.STRIPE_API_KEY);
 
 const transport = nodemailer.createTransport(
   nodemailerSendgrid({
