@@ -9,6 +9,10 @@ require("dotenv").config();
 app.use(cors());
 app.use(express.json());
 
+const stripe = require("stripe")(
+  "sk_test_51LnhEqIb25AxNl5ozJisKxeGyspchWw7UQC8wPsHE2XUKSWATmjB0KOuNcKIOWUaBysG673bATIa7SXALBsPkT6U00AsiYqO35"
+);
+
 const transport = nodemailer.createTransport(
   nodemailerSendgrid({
     apiKey: process.env.EMAIL_API_KEY,
@@ -65,6 +69,7 @@ async function run() {
     const ordersCollection = database.collection("orders");
     const reviewsCollection = database.collection("reviews");
     const postsCollection = database.collection("posts");
+    const paymentsCollection = database.collection("payments");
 
     const verifyAdmin = async (req, res, next) => {
       const adminEmail = req.decoded.email;
@@ -75,7 +80,35 @@ async function run() {
         return res.status(403).send({ message: "forbidden" });
       }
     };
+    app.post("/create-payment-intent", async (req, res) => {
+      const { totalPrice } = req.body;
+      const amount = totalPrice * 100;
+      console.log(amount);
 
+      // Create a PaymentIntent with the order amount and currency
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_method_types: ["card"],
+      });
+
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      });
+    });
+    app.patch("/payments/:id", async (req, res) => {
+      const id = req.params.id;
+      const payment = req.body;
+      const filter = { _id: ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          paid: true,
+          transactionId: payment.transactionId,
+        },
+      };
+      const updateOrder = await ordersCollection.updateOne(filter, updateDoc);
+      const result = await paymentsCollection.insertOne(payment);
+    });
     app.get("/services", async (req, res) => {
       const query = {};
       const cursor = servicesColleciton.find(query);
@@ -92,7 +125,7 @@ async function run() {
     app.put("/services/:id", jwtVerify, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const data = req.body;
-      console.log(data);
+
       const filter = { _id: ObjectId(id) };
       const options = { upsert: true };
       const updateDoc = {
@@ -116,6 +149,13 @@ async function run() {
       const query = { userEmail: email };
       const cursor = ordersCollection.find(query);
       const result = await cursor.toArray();
+      res.send(result);
+    });
+    app.get("/order/:id", jwtVerify, async (req, res) => {
+      const id = req.params.id;
+
+      const query = { _id: ObjectId(id) };
+      const result = await ordersCollection.findOne(query);
       res.send(result);
     });
     app.get("/allorders", jwtVerify, verifyAdmin, async (req, res) => {
