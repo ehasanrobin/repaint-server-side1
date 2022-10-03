@@ -11,29 +11,6 @@ app.use(express.json());
 
 const stripe = require("stripe")(process.env.STRIPE_API_KEY);
 
-const transport = nodemailer.createTransport(
-  nodemailerSendgrid({
-    apiKey: process.env.EMAIL_API_KEY,
-  })
-);
-
-const OrderConfirm = (userEmail) => {
-  transport.sendMail({
-    from: process.env.USER_EMAIL,
-    to: userEmail,
-    subject: "Order Mail",
-    html: "<h1>You have placed a order</h1>",
-  });
-};
-const SendMsg = (name, email, subject, msg) => {
-  transport.sendMail({
-    from: email,
-    to: process.env.USER_EMAIL,
-    subject: subject,
-    html: `<p>${msg}</p>`,
-  });
-};
-
 const jwtVerify = (req, res, next) => {
   const authorization = req.headers.authorization;
 
@@ -68,6 +45,29 @@ async function run() {
     const reviewsCollection = database.collection("reviews");
     const postsCollection = database.collection("posts");
     const paymentsCollection = database.collection("payments");
+
+    const transport = nodemailer.createTransport(
+      nodemailerSendgrid({
+        apiKey: process.env.EMAIL_API_KEY,
+      })
+    );
+
+    const OrderConfirm = (userEmail) => {
+      transport.sendMail({
+        from: process.env.USER_EMAIL,
+        to: userEmail,
+        subject: "Order Mail",
+        html: "<h1>You have placed a order</h1>",
+      });
+    };
+    const SendMsg = (name, email, subject, msg) => {
+      transport.sendMail({
+        from: email,
+        to: process.env.USER_EMAIL,
+        subject: subject,
+        html: `<p>${msg}</p>`,
+      });
+    };
 
     const verifyAdmin = async (req, res, next) => {
       const adminEmail = req.decoded.email;
