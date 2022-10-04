@@ -27,6 +27,28 @@ const jwtVerify = (req, res, next) => {
     next();
   });
 };
+const transport = nodemailer.createTransport(
+  nodemailerSendgrid({
+    apiKey: process.env.EMAIL_API_KEY,
+  })
+);
+
+const OrderConfirm = (userEmail) => {
+  transport.sendMail({
+    from: process.env.USER_EMAIL,
+    to: userEmail,
+    subject: "Order Mail",
+    html: "<h1>You have placed a order</h1>",
+  });
+};
+const SendMsg = (name, email, subject, msg) => {
+  transport.sendMail({
+    from: email,
+    to: process.env.USER_EMAIL,
+    subject: subject,
+    html: `<p>${msg}</p>`,
+  });
+};
 
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const uri = `mongodb+srv://${process.env.DB_PASS}:${process.env.DB_PASS}@cluster0.mckplrf.mongodb.net/?retryWrites=true&w=majority`;
@@ -45,29 +67,6 @@ async function run() {
     const reviewsCollection = database.collection("reviews");
     const postsCollection = database.collection("posts");
     const paymentsCollection = database.collection("payments");
-
-    const transport = nodemailer.createTransport(
-      nodemailerSendgrid({
-        apiKey: process.env.EMAIL_API_KEY,
-      })
-    );
-
-    const OrderConfirm = (userEmail) => {
-      transport.sendMail({
-        from: process.env.USER_EMAIL,
-        to: userEmail,
-        subject: "Order Mail",
-        html: "<h1>You have placed a order</h1>",
-      });
-    };
-    const SendMsg = (name, email, subject, msg) => {
-      transport.sendMail({
-        from: email,
-        to: process.env.USER_EMAIL,
-        subject: subject,
-        html: `<p>${msg}</p>`,
-      });
-    };
 
     const verifyAdmin = async (req, res, next) => {
       const adminEmail = req.decoded.email;
