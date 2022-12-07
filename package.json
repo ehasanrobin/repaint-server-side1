@@ -2,6 +2,7 @@
   "name": "manufacturer-server-site",
   "version": "1.0.0",
   "description": "",
+  "type": "module",
   "engines": {
     "node": "18.x"
   },
