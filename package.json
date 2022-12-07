@@ -6,6 +6,7 @@
     "node": "12.11.1"
   },
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "start": "node index.js",
     "start-dev": "nodemon index.js",
